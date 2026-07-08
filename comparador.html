@@ -187,6 +187,7 @@
     width:100%;
     min-height:280px;
     background:#000;
+    cursor:pointer;
   }
   .modal-footer-msg{
     color:#eee;
@@ -359,7 +360,7 @@
       <button class="modal-close" id="scanModalClose">&times;</button>
     </div>
     <div id="reader"></div>
-    <div class="modal-footer-msg">Apuntá la cámara al código de barras del producto</div>
+    <div class="modal-footer-msg">Apuntá la cámara al código de barras del producto.<br>Si se ve borroso, tocá la imagen para reenfocar.</div>
   </div>
 </div>
 
@@ -692,18 +693,49 @@
 
     var config = { fps: 10, qrbox: { width: 250, height: 140 } };
 
+    // Pedimos resolución más alta y foco continuo: por defecto muchos
+    // celulares Android arrancan con foco fijo y la imagen queda borrosa
+    // para leer códigos de barra de cerca. "focusMode" es una extensión
+    // no estándar (Image Capture API) que Chrome/Android respeta pero
+    // otros navegadores ignoran sin romper nada.
+    var videoConstraints = {
+      facingMode: 'environment',
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      advanced: [{ focusMode: 'continuous' }]
+    };
+
     html5QrCode.start(
-      { facingMode: 'environment' },
+      videoConstraints,
       config,
       function onScanSuccess(decodedText){
         onBarcodeDetected(decodedText);
       },
       function onScanFailure(){ /* ignorar frames sin código */ }
-    ).catch(function(err){
+    ).then(function(){
+      applyContinuousFocus();
+    }).catch(function(err){
       showStatus(target, 'No pudimos acceder a la cámara (permiso denegado o sin cámara disponible). Podés escanear de nuevo o cargar todo a mano 👇', 'error');
       closeScanModal();
     });
   }
+
+  // Reintenta forzar foco continuo sobre el track ya activo. En algunos
+  // dispositivos el foco continuo solo "prende" si se aplica una vez que
+  // la cámara ya está corriendo (no alcanza con pedirlo al iniciar).
+  function applyContinuousFocus(){
+    if(!html5QrCode || typeof html5QrCode.applyVideoConstraints !== 'function') return;
+    html5QrCode.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function(){
+      /* no soportado en este navegador/dispositivo, seguimos sin romper nada */
+    });
+  }
+
+  // Tocar la imagen de la cámara reintenta el enfoque: útil en celus
+  // donde el foco continuo no está soportado y hay que "empujarlo" a mano.
+  $('#reader').addEventListener('click', function(){
+    if(!html5QrCode) return;
+    applyContinuousFocus();
+  });
 
   function onBarcodeDetected(code){
     var target = currentScanTarget;
