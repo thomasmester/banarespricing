@@ -193,7 +193,6 @@
     width:100%;
     min-height:280px;
     background:#000;
-    cursor:pointer;
   }
   .modal-footer-msg{
     color:#eee;
@@ -282,7 +281,7 @@
 <body>
 
 <h1>🛒 Comparador de precios</h1>
-<div class="version-tag">v1.6 · 2026-07-08 · alta resolución + tip de distancia</div>
+<div class="version-tag">v1.7 · 2026-07-08 · cámara mínima y simple</div>
 
 <div class="cards">
   <!-- PRODUCTO A -->
@@ -700,54 +699,23 @@
 
     var config = { fps: 10, qrbox: { width: 250, height: 140 } };
 
-    // Un solo pedido de cámara, simple y directo: facingMode "environment"
-    // (trasera), con resolución alta como "ideal" (constraint estándar,
-    // no rompe nada si el dispositivo no la soporta) para que la imagen
-    // no se vea borrosa por estar estirada desde una resolución baja.
-    // Evitamos constraints no estándar (focusMode) o pedidos de cámara
-    // en paralelo (como getCameras()): eso es lo que rompió el acceso
-    // a la cámara en versiones anteriores.
+    // Pedido de cámara mínimo: solo facingMode "environment" (trasera).
+    // Se probó pedir foco continuo, resolución alta y listar cámaras en
+    // paralelo, y cada uno de esos agregados rompió el acceso a la
+    // cámara en este dispositivo. Nos quedamos con lo mínimo que
+    // funciona de forma confiable.
     html5QrCode.start(
-      {
-        facingMode: 'environment',
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-      },
+      { facingMode: 'environment' },
       config,
       function onScanSuccess(decodedText){
         onBarcodeDetected(decodedText);
       },
       function onScanFailure(){ /* ignorar frames sin código */ }
-    ).then(function(){
-      applyContinuousFocus();
-    }).catch(function(err){
+    ).catch(function(err){
       showStatus(target, 'No pudimos acceder a la cámara (permiso denegado o sin cámara disponible). Podés escanear de nuevo o cargar todo a mano 👇', 'error');
       closeScanModal();
     });
   }
-
-  // Una vez que la cámara ya está corriendo, intentamos -sin bloquear
-  // nada- pedirle foco continuo al track activo. Esto se hace con
-  // applyConstraints sobre un track ya abierto, que es mucho más
-  // tolerante que pedirlo en el getUserMedia inicial: si el navegador
-  // no soporta focusMode, la promesa simplemente rechaza y no pasa nada.
-  function applyContinuousFocus(){
-    if(!html5QrCode || typeof html5QrCode.applyVideoConstraints !== 'function') return;
-    try{
-      html5QrCode.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function(){
-        /* no soportado en este navegador/dispositivo, seguimos sin romper nada */
-      });
-    }catch(e){
-      /* algunas versiones viejas de la librería no tienen este método */
-    }
-  }
-
-  // Tocar la imagen de la cámara reintenta el enfoque: útil en celus
-  // donde el foco continuo no está soportado y hay que "empujarlo" a mano.
-  $('#reader').addEventListener('click', function(){
-    if(!html5QrCode) return;
-    applyContinuousFocus();
-  });
 
   function onBarcodeDetected(code){
     var target = currentScanTarget;
