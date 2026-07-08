@@ -281,7 +281,7 @@
 <body>
 
 <h1>🛒 Comparador de precios</h1>
-<div class="version-tag">v1.7 · 2026-07-08 · cámara mínima y simple</div>
+<div class="version-tag">v1.8 · 2026-07-08 · error especifico de la API</div>
 
 <div class="cards">
   <!-- PRODUCTO A -->
@@ -600,12 +600,18 @@
       '.json?fields=product_name,brands,quantity,product_quantity,product_quantity_unit,image_small_url';
 
     var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    var timeoutId = setTimeout(function(){ if(controller) controller.abort(); }, 8000);
+    var timedOut = false;
+    var timeoutId = setTimeout(function(){
+      timedOut = true;
+      if(controller) controller.abort();
+    }, 8000);
 
     fetch(url, controller ? { signal: controller.signal } : {})
       .then(function(res){
         clearTimeout(timeoutId);
-        if(!res.ok) throw new Error('http-error');
+        if(!res.ok){
+          throw new Error('la API respondió ' + res.status + ' ' + res.statusText);
+        }
         return res.json();
       })
       .then(function(data){
@@ -617,7 +623,19 @@
       })
       .catch(function(err){
         clearTimeout(timeoutId);
-        showStatus(target, 'No pudimos consultar la base de datos (sin conexión o timeout). Completá los datos a mano 👇', 'error');
+        var detail;
+        if(timedOut){
+          detail = 'se agotó el tiempo de espera (8s)';
+        } else if(err && err.name === 'AbortError'){
+          detail = 'la consulta fue cancelada';
+        } else if(err instanceof SyntaxError){
+          detail = 'la respuesta de la API no era JSON válido';
+        } else if(err && err.message){
+          detail = err.message;
+        } else {
+          detail = 'error desconocido';
+        }
+        showStatus(target, 'No pudimos consultar Open Food Facts (' + detail + '). Completá los datos a mano 👇', 'error');
       });
   }
 
