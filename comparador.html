@@ -282,7 +282,7 @@
 <body>
 
 <h1>🛒 Comparador de precios</h1>
-<div class="version-tag">v1.5 · 2026-07-08 · solo cámara trasera</div>
+<div class="version-tag">v1.6 · 2026-07-08 · alta resolución + tip de distancia</div>
 
 <div class="cards">
   <!-- PRODUCTO A -->
@@ -367,7 +367,7 @@
       <button class="modal-close" id="scanModalClose">&times;</button>
     </div>
     <div id="reader"></div>
-    <div class="modal-footer-msg">Apuntá la cámara al código de barras del producto.<br>Si se ve borroso, tocá la imagen para reenfocar.</div>
+    <div class="modal-footer-msg">Apuntá la cámara al código de barras del producto.<br>Si se ve borroso, alejalo un poco (~10-15cm): la mayoría de los celus no enfocan más cerca.</div>
   </div>
 </div>
 
@@ -701,11 +701,18 @@
     var config = { fps: 10, qrbox: { width: 250, height: 140 } };
 
     // Un solo pedido de cámara, simple y directo: facingMode "environment"
-    // (trasera). Pedir constraints no estándar acá (focusMode) o hacer un
-    // segundo pedido en paralelo (como getCameras()) puede chocar con este
-    // start() y hacer que el navegador rechace el acceso a la cámara.
+    // (trasera), con resolución alta como "ideal" (constraint estándar,
+    // no rompe nada si el dispositivo no la soporta) para que la imagen
+    // no se vea borrosa por estar estirada desde una resolución baja.
+    // Evitamos constraints no estándar (focusMode) o pedidos de cámara
+    // en paralelo (como getCameras()): eso es lo que rompió el acceso
+    // a la cámara en versiones anteriores.
     html5QrCode.start(
-      { facingMode: 'environment' },
+      {
+        facingMode: 'environment',
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
       config,
       function onScanSuccess(decodedText){
         onBarcodeDetected(decodedText);
