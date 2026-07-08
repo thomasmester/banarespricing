@@ -693,20 +693,12 @@
 
     var config = { fps: 10, qrbox: { width: 250, height: 140 } };
 
-    // Pedimos resolución más alta y foco continuo: por defecto muchos
-    // celulares Android arrancan con foco fijo y la imagen queda borrosa
-    // para leer códigos de barra de cerca. "focusMode" es una extensión
-    // no estándar (Image Capture API) que Chrome/Android respeta pero
-    // otros navegadores ignoran sin romper nada.
-    var videoConstraints = {
-      facingMode: 'environment',
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
-      advanced: [{ focusMode: 'continuous' }]
-    };
-
+    // Constraints mínimos y seguros para el pedido de cámara: pedir cosas
+    // no estándar acá (como focusMode) puede hacer que el navegador
+    // rechace el getUserMedia entero con OverconstrainedError en algunos
+    // dispositivos, aunque el permiso de cámara esté concedido.
     html5QrCode.start(
-      videoConstraints,
+      { facingMode: 'environment' },
       config,
       function onScanSuccess(decodedText){
         onBarcodeDetected(decodedText);
@@ -720,14 +712,20 @@
     });
   }
 
-  // Reintenta forzar foco continuo sobre el track ya activo. En algunos
-  // dispositivos el foco continuo solo "prende" si se aplica una vez que
-  // la cámara ya está corriendo (no alcanza con pedirlo al iniciar).
+  // Una vez que la cámara ya está corriendo, intentamos -sin bloquear
+  // nada- pedirle foco continuo al track activo. Esto se hace con
+  // applyConstraints sobre un track ya abierto, que es mucho más
+  // tolerante que pedirlo en el getUserMedia inicial: si el navegador
+  // no soporta focusMode, la promesa simplemente rechaza y no pasa nada.
   function applyContinuousFocus(){
     if(!html5QrCode || typeof html5QrCode.applyVideoConstraints !== 'function') return;
-    html5QrCode.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function(){
-      /* no soportado en este navegador/dispositivo, seguimos sin romper nada */
-    });
+    try{
+      html5QrCode.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function(){
+        /* no soportado en este navegador/dispositivo, seguimos sin romper nada */
+      });
+    }catch(e){
+      /* algunas versiones viejas de la librería no tienen este método */
+    }
   }
 
   // Tocar la imagen de la cámara reintenta el enfoque: útil en celus
