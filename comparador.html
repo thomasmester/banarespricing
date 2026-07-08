@@ -180,6 +180,20 @@
     color:#fff;
   }
   .modal-header span{font-weight:600;font-size:0.95rem;}
+  .modal-header-actions{
+    display:flex;
+    align-items:center;
+    gap:4px;
+  }
+  .modal-icon-btn{
+    background:none;
+    border:none;
+    color:#fff;
+    font-size:1.15rem;
+    cursor:pointer;
+    line-height:1;
+    padding:6px 8px;
+  }
   .modal-close{
     background:none;
     border:none;
@@ -282,7 +296,7 @@
 <body>
 
 <h1>🛒 Comparador de precios</h1>
-<div class="version-tag">v1.3 · 2026-07-08 · fix foco cámara</div>
+<div class="version-tag">v1.4 · 2026-07-08 · botón cambiar cámara</div>
 
 <div class="cards">
   <!-- PRODUCTO A -->
@@ -364,10 +378,13 @@
   <div class="modal-box">
     <div class="modal-header">
       <span id="scanModalTitle">Escaneando...</span>
-      <button class="modal-close" id="scanModalClose">&times;</button>
+      <div class="modal-header-actions">
+        <button class="modal-icon-btn" id="scanModalSwitchCam" title="Cambiar cámara" style="display:none;">🔄</button>
+        <button class="modal-close" id="scanModalClose">&times;</button>
+      </div>
     </div>
     <div id="reader"></div>
-    <div class="modal-footer-msg">Apuntá la cámara al código de barras del producto.<br>Si se ve borroso, tocá la imagen para reenfocar.</div>
+    <div class="modal-footer-msg">Apuntá la cámara al código de barras del producto.<br>Si se ve borroso, tocá la imagen para reenfocar o probá "🔄 Cambiar cámara".</div>
   </div>
 </div>
 
@@ -676,11 +693,28 @@
   // --- Escaneo con html5-qrcode ---
   var scanModal = $('#scanModal');
   var scanModalTitle = $('#scanModalTitle');
+  var switchCamBtn = $('#scanModalSwitchCam');
+  var cameraList = [];
+  var currentCameraIndex = -1;
+
+  function createScanner(){
+    return new Html5Qrcode('reader', {
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A
+      ],
+      verbose: false
+    });
+  }
 
   function openScanModal(target){
     currentScanTarget = target;
     scanModalTitle.textContent = 'Escaneando producto ' + target;
     scanModal.classList.add('show');
+    switchCamBtn.style.display = 'none';
+    cameraList = [];
+    currentCameraIndex = -1;
     showStatus(target, '', null);
 
     if(typeof Html5Qrcode === 'undefined'){
@@ -689,23 +723,32 @@
       return;
     }
 
-    html5QrCode = new Html5Qrcode('reader', {
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.UPC_A
-      ],
-      verbose: false
-    });
+    html5QrCode = createScanner();
+    startCamera({ facingMode: 'environment' });
 
+    // En paralelo buscamos la lista de cámaras disponibles para ofrecer
+    // el botón "cambiar cámara": en varios Android con más de una lente
+    // trasera, la que arranca por defecto con facingMode:"environment"
+    // es la gran angular (sin autofoco), y hay que poder pasar a la
+    // lente principal a mano para que la imagen deje de verse borrosa.
+    Html5Qrcode.getCameras().then(function(cameras){
+      cameraList = cameras || [];
+      if(cameraList.length > 1){
+        switchCamBtn.style.display = '';
+      }
+    }).catch(function(){ /* no pudimos listar cámaras, seguimos igual */ });
+  }
+
+  function startCamera(source){
     var config = { fps: 10, qrbox: { width: 250, height: 140 } };
+    var target = currentScanTarget;
 
     // Constraints mínimos y seguros para el pedido de cámara: pedir cosas
     // no estándar acá (como focusMode) puede hacer que el navegador
     // rechace el getUserMedia entero con OverconstrainedError en algunos
     // dispositivos, aunque el permiso de cámara esté concedido.
     html5QrCode.start(
-      { facingMode: 'environment' },
+      source,
       config,
       function onScanSuccess(decodedText){
         onBarcodeDetected(decodedText);
@@ -718,6 +761,22 @@
       closeScanModal();
     });
   }
+
+  function switchCamera(){
+    if(cameraList.length < 2) return;
+    var target = currentScanTarget;
+    switchCamBtn.disabled = true;
+    stopScanner().then(function(){
+      currentCameraIndex = (currentCameraIndex + 1) % cameraList.length;
+      currentScanTarget = target;
+      showStatus(target, 'Cambiando de cámara...', 'info');
+      html5QrCode = createScanner();
+      startCamera({ deviceId: { exact: cameraList[currentCameraIndex].id } });
+      switchCamBtn.disabled = false;
+    });
+  }
+
+  switchCamBtn.addEventListener('click', switchCamera);
 
   // Una vez que la cámara ya está corriendo, intentamos -sin bloquear
   // nada- pedirle foco continuo al track activo. Esto se hace con
