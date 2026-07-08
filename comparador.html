@@ -281,7 +281,7 @@
 <body>
 
 <h1>🛒 Comparador de precios</h1>
-<div class="version-tag">v1.8 · 2026-07-08 · error especifico de la API</div>
+<div class="version-tag">v1.9 · 2026-07-08 · 404 = no encontrado, no error</div>
 
 <div class="cards">
   <!-- PRODUCTO A -->
@@ -609,6 +609,13 @@
     fetch(url, controller ? { signal: controller.signal } : {})
       .then(function(res){
         clearTimeout(timeoutId);
+        // Open Food Facts responde 404 cuando el código de barras no está
+        // cargado en su base (muy común con productos argentinos/locales).
+        // Eso NO es un error de la app: es el caso normal de "no lo
+        // tenemos", igual que status:0 en el body.
+        if(res.status === 404){
+          return { status: 0 };
+        }
         if(!res.ok){
           throw new Error('la API respondió ' + res.status + ' ' + res.statusText);
         }
@@ -616,7 +623,7 @@
       })
       .then(function(data){
         if(!data || data.status === 0 || !data.product){
-          showStatus(target, 'No encontramos ese producto en la base. Completá los datos a mano 👇', 'warn');
+          showStatus(target, 'No encontramos ese producto en la base (no está cargado en Open Food Facts). Completá los datos a mano 👇', 'warn');
           return;
         }
         applyProductData(target, data.product);
