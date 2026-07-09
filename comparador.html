@@ -19,6 +19,26 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
+
+  @keyframes fadeSlideUp{
+    from{ opacity:0; transform:translateY(10px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  @keyframes bounceOnce{
+    0%{ transform:translateY(0) rotate(0); }
+    30%{ transform:translateY(-6px) rotate(-8deg); }
+    55%{ transform:translateY(0) rotate(4deg); }
+    75%{ transform:translateY(-2px) rotate(-2deg); }
+    100%{ transform:translateY(0) rotate(0); }
+  }
+  @keyframes winnerPulse{
+    0%, 100%{ box-shadow:0 0 0 0 rgba(22,163,74,0.35); }
+    50%{ box-shadow:0 0 0 8px rgba(22,163,74,0); }
+  }
+  @keyframes toastIn{
+    from{ opacity:0; transform:translateY(-10px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
   body{
     background:var(--bg);
     color:var(--text);
@@ -36,7 +56,18 @@
     text-align:center;
     font-size:0.72rem;
     color:var(--muted);
+    margin:0 0 4px;
+  }
+  .tagline{
+    text-align:center;
+    font-size:0.72rem;
+    color:var(--muted);
+    font-style:italic;
     margin:0 0 18px;
+  }
+  .emoji-bounce{
+    display:inline-block;
+    animation:bounceOnce 0.9s ease 0.2s both;
   }
   .category-field{
     margin-bottom:16px;
@@ -67,7 +98,6 @@
     background:#fff;
   }
   .combobox-suggestions{
-    display:none;
     position:absolute;
     left:0;
     right:0;
@@ -75,20 +105,33 @@
     background:#fff;
     border:1px solid var(--border);
     border-radius:10px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.12);
-    max-height:220px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.14);
+    max-height:260px;
     overflow-y:auto;
     z-index:50;
+    opacity:0;
+    transform:translateY(-6px);
+    pointer-events:none;
+    transition:opacity 0.18s ease, transform 0.18s ease;
   }
-  .combobox-suggestions.show{display:block;}
+  .combobox-suggestions.show{
+    opacity:1;
+    transform:translateY(0);
+    pointer-events:auto;
+  }
   .combobox-item{
     padding:12px 14px;
     font-size:0.95rem;
     cursor:pointer;
     border-bottom:1px solid var(--border);
+    transition:background-color 0.1s ease;
   }
   .combobox-item:last-child{border-bottom:none;}
   .combobox-item:active{background:#f0f2f5;}
+  .combobox-item-create{
+    color:var(--accent);
+    font-weight:700;
+  }
 
   .cards{
     display:flex;
@@ -101,6 +144,11 @@
     border-radius:16px;
     padding:16px;
     box-shadow:0 1px 3px rgba(0,0,0,0.05);
+    animation:fadeSlideUp 0.3s ease both;
+    transition:box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  @media (hover:hover){
+    .card:hover{ box-shadow:0 4px 14px rgba(0,0,0,0.08); transform:translateY(-1px); }
   }
   .card-head{
     display:flex;
@@ -181,7 +229,9 @@
     font-weight:600;
     cursor:pointer;
     touch-action:manipulation;
+    transition:transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
   }
+  .btn:active{transform:scale(0.96);}
   .btn-add{
     background:#eef0f4;
     color:var(--accent);
@@ -193,17 +243,20 @@
     color:#fff;
     width:100%;
     margin-top:14px;
+    box-shadow:0 4px 14px rgba(37,99,235,0.28);
   }
-  .btn-save:active{background:var(--accent-dark);}
+  .btn-save:active{background:var(--accent-dark);box-shadow:0 2px 6px rgba(37,99,235,0.22);}
   .save-status{
     text-align:center;
     font-size:0.82rem;
     margin-top:8px;
-    display:none;
     color:var(--green);
     font-weight:600;
+    opacity:0;
+    transform:translateY(-4px);
+    transition:opacity 0.25s ease, transform 0.25s ease;
   }
-  .save-status.show{display:block;}
+  .save-status.show{opacity:1;transform:translateY(0);}
   .save-status.error{color:var(--red);}
 
   .history-section{
@@ -239,6 +292,19 @@
     border:1px solid var(--border);
     border-radius:12px;
     padding:12px 14px;
+    overflow:hidden;
+    max-height:300px;
+    animation:fadeSlideUp 0.3s ease both;
+    animation-delay:calc(var(--i, 0) * 40ms);
+    transition:opacity 0.25s ease, transform 0.25s ease, max-height 0.25s ease, padding 0.25s ease, border-width 0.25s ease;
+  }
+  .history-item.removing{
+    opacity:0;
+    transform:scale(0.96);
+    max-height:0;
+    padding-top:0;
+    padding-bottom:0;
+    border-width:0;
   }
   .history-item-top{
     display:flex;
@@ -332,6 +398,8 @@
     padding:10px 10px;
     border-radius:12px;
     background:#f6f7f9;
+    animation:fadeSlideUp 0.3s ease both;
+    animation-delay:calc(var(--i, 0) * 50ms);
   }
   .result-row + .result-row{
     margin-top:8px;
@@ -339,6 +407,7 @@
   .result-row.winner{
     background:var(--green-bg);
     border:2px solid var(--green);
+    animation:fadeSlideUp 0.3s ease both, winnerPulse 1.1s ease-in-out 0.3s 2;
   }
   .result-rank{
     font-size:1.1rem;
@@ -388,15 +457,61 @@
     margin-top:12px;
   }
 
+  .easter-egg-footer{
+    text-align:center;
+    font-size:0.68rem;
+    color:var(--muted);
+    opacity:0.7;
+    margin:28px 0 4px;
+  }
+
+  .toast{
+    position:fixed;
+    top:14px;
+    left:14px;
+    right:14px;
+    background:#111827;
+    color:#fff;
+    padding:14px 16px;
+    border-radius:12px;
+    font-size:0.85rem;
+    line-height:1.4;
+    box-shadow:0 8px 24px rgba(0,0,0,0.25);
+    z-index:900;
+    display:none;
+    align-items:center;
+    gap:10px;
+  }
+  .toast.show{
+    display:flex;
+    animation:toastIn 0.3s ease both;
+  }
+  .toast-close{
+    background:none;
+    border:none;
+    color:#fff;
+    opacity:0.7;
+    font-size:1.1rem;
+    cursor:pointer;
+    margin-left:auto;
+    padding:2px 6px;
+    line-height:1;
+    flex-shrink:0;
+  }
+
   @media (min-width:600px){
     body{max-width:520px;margin:0 auto;}
+    .toast{width:520px;left:50%;right:auto;margin-left:-260px;}
   }
 </style>
 </head>
 <body>
 
-<h1>🛒 Comparador de precios</h1>
-<div class="version-tag">v2.1 · 2026-07-09 · categoría + historial guardado</div>
+<div class="toast" id="easterToast"></div>
+
+<h1><span class="emoji-bounce">🛒</span> Comparador de precios</h1>
+<div class="version-tag">v2.2 · 2026-07-09 · 150+ categorías, animaciones</div>
+<div class="tagline">Edición especial para el Dr. Pablo Bañares — precisión clínica por mililitro.</div>
 
 <div class="field category-field">
   <label>Categoría (los productos que vas a comparar)</label>
@@ -417,6 +532,8 @@
   </div>
   <div class="history-list" id="historyList"></div>
 </div>
+
+<div class="easter-egg-footer">🥚 Chiste recurrente que solo entienden 19 personas. Si sos una de ellas, ya sabés de qué hablo.</div>
 
 <!-- Panel de resultado -->
 <div class="result-panel placeholder" id="resultPanel">
@@ -698,7 +815,7 @@
           var diffPct = ((item.unitPrice - winner.unitPrice) / winner.unitPrice) * 100;
           sub += ' · +' + formatARS(diffPct) + '% más caro';
         }
-        html += '<div class="result-row' + (isWinner ? ' winner' : '') + '">' +
+        html += '<div class="result-row' + (isWinner ? ' winner' : '') + '" style="--i:' + i + '">' +
           '<div class="result-rank">' + rankLabel + '</div>' +
           '<div class="result-info">' +
             '<div class="result-name">' + escapeHtml(truncate(productLabel(item.product), 24)) + '</div>' +
@@ -725,19 +842,43 @@
   }
 
   // --- Categoría: combobox con buscador predictivo ---
+  // Productos concretos de góndola (no rubros genéricos como "Lácteos"):
+  // así comparás manteca contra manteca, no manteca contra yogur.
   var CATEGORY_LIST = [
-    'Lácteos', 'Leches', 'Yogures', 'Quesos', 'Mantecas y margarinas',
-    'Huevos', 'Panificados', 'Fideos y pastas', 'Arroz', 'Legumbres',
-    'Harinas', 'Aceites', 'Vinagres y aderezos', 'Azúcar y edulcorantes',
-    'Sal y condimentos', 'Conservas', 'Salsas', 'Café, té e infusiones',
-    'Cacao y achocolatados', 'Galletitas', 'Snacks y papas fritas',
-    'Golosinas y chocolates', 'Cereales y barritas', 'Gaseosas', 'Aguas',
-    'Jugos', 'Cervezas', 'Vinos', 'Congelados', 'Fiambres y embutidos',
-    'Carnes', 'Verdulería y frutas', 'Panadería', 'Repostería',
-    'Limpieza del hogar', 'Lavandina y desinfectantes', 'Detergentes',
-    'Suavizantes', 'Papel higiénico', 'Servilletas', 'Rollo de cocina',
-    'Shampoo y acondicionador', 'Jabones', 'Pasta dental',
-    'Desodorantes', 'Pañales', 'Toallitas húmedas', 'Mascotas'
+    'Leche entera', 'Leche descremada', 'Leche deslactosada', 'Leche chocolatada', 'Leche en polvo',
+    'Yogur bebible', 'Yogur firme', 'Yogur griego', 'Yogur descremado',
+    'Queso cremoso', 'Queso rallado', 'Queso en hebras', 'Queso untable', 'Queso de máquina', 'Queso mozzarella', 'Queso parmesano', 'Queso port salut',
+    'Manteca', 'Margarina', 'Crema de leche', 'Dulce de leche', 'Postres de leche', 'Flanes', 'Huevos',
+    'Pan lactal', 'Pan francés', 'Pan árabe', 'Facturas', 'Medialunas', 'Tostadas', 'Grisines', 'Pan dulce', 'Bizcochos',
+    'Harina 0000', 'Harina integral', 'Harina leudante', 'Premezcla para tortas', 'Levadura', 'Polenta', 'Maicena', 'Rebozador',
+    'Fideos secos', 'Fideos frescos', 'Ñoquis', 'Ravioles', 'Sorrentinos', 'Tapas para empanadas', 'Tapas para tarta',
+    'Arroz', 'Lentejas', 'Garbanzos', 'Porotos', 'Avena', 'Cereales de desayuno', 'Barritas de cereal', 'Granola',
+    'Aceite de girasol', 'Aceite de oliva', 'Aceite de maíz', 'Vinagre', 'Mayonesa', 'Ketchup', 'Mostaza',
+    'Azúcar', 'Edulcorante', 'Sal', 'Pimienta', 'Orégano', 'Caldo en cubos',
+    'Salsa de tomate', 'Puré de tomate', 'Salsa golf', 'Aderezos para ensalada', 'Salsa blanca',
+    'Atún en lata', 'Sardinas en lata', 'Choclo en lata', 'Arvejas en lata', 'Duraznos en almíbar', 'Aceitunas', 'Pickles', 'Palmitos', 'Legumbres en lata',
+    'Café molido', 'Café instantáneo', 'Café en cápsulas', 'Té', 'Yerba mate', 'Mate cocido', 'Cacao en polvo', 'Chocolate para taza',
+    'Galletitas dulces', 'Galletitas saladas', 'Galletitas rellenas', 'Alfajores', 'Papas fritas snack', 'Palitos salados',
+    'Maní', 'Chizitos', 'Pochoclo', 'Chocolates', 'Caramelos', 'Chicles', 'Gomitas', 'Turrones', 'Obleas',
+    'Gaseosa cola', 'Gaseosa lima-limón', 'Gaseosa naranja', 'Agua sin gas', 'Agua con gas', 'Agua saborizada',
+    'Jugo exprimido', 'Jugo en polvo', 'Isotónicas', 'Energizantes',
+    'Cerveza', 'Vino tinto', 'Vino blanco', 'Espumante', 'Fernet', 'Whisky', 'Vodka', 'Gin', 'Aperitivos',
+    'Helado', 'Papas congeladas', 'Vegetales congelados', 'Hamburguesas congeladas', 'Medallones de pollo',
+    'Empanadas congeladas', 'Pizzas congeladas', 'Tartas congeladas',
+    'Jamón cocido', 'Jamón crudo', 'Salame', 'Mortadela', 'Bondiola', 'Paleta', 'Chorizo', 'Panceta',
+    'Milanesas', 'Pollo entero', 'Pechuga de pollo', 'Carne picada', 'Asado', 'Bife de chorizo', 'Matambre', 'Pescado fresco', 'Merluza', 'Salmón',
+    'Papa', 'Cebolla', 'Tomate', 'Zanahoria', 'Zapallo', 'Lechuga', 'Batata', 'Ajo', 'Morrón',
+    'Banana', 'Manzana', 'Naranja', 'Limón', 'Palta', 'Frutilla', 'Mandarina', 'Pera',
+    'Detergente lavavajilla', 'Lavandina', 'Desinfectante de pisos', 'Limpiavidrios', 'Limpiador multiuso',
+    'Esponjas', 'Jabón en polvo', 'Jabón líquido para ropa', 'Suavizante para ropa', 'Quitamanchas', 'Lustramuebles', 'Insecticida',
+    'Papel higiénico', 'Servilletas', 'Rollo de cocina', 'Pañuelos descartables', 'Papel aluminio', 'Film transparente',
+    'Bolsas de residuos', 'Vasos descartables', 'Platos descartables',
+    'Shampoo', 'Acondicionador', 'Jabón de tocador', 'Gel de ducha', 'Desodorante',
+    'Pasta dental', 'Cepillo de dientes', 'Hilo dental', 'Enjuague bucal', 'Toallitas húmedas',
+    'Alcohol en gel', 'Curitas', 'Protector solar', 'Rasuradoras', 'Espuma de afeitar',
+    'Pañales', 'Toallitas para bebé', 'Leche de fórmula', 'Toallas femeninas', 'Protectores diarios', 'Tampones', 'Preservativos',
+    'Alimento para perros', 'Alimento para gatos', 'Arena sanitaria', 'Snacks para mascotas',
+    'Pilas', 'Velas', 'Fósforos', 'Carbón', 'Repelente de insectos'
   ];
 
   function normalizeText(str){
@@ -748,16 +889,15 @@
   var categorySuggestions = $('#categorySuggestions');
 
   function renderCategorySuggestions(query){
-    var q = normalizeText(query);
+    var trimmed = query.trim();
+    var q = normalizeText(trimmed);
     var matches = !q
       ? CATEGORY_LIST.slice(0, 8)
       : CATEGORY_LIST.filter(function(cat){ return normalizeText(cat).indexOf(q) !== -1; }).slice(0, 8);
+    var exactMatch = q !== '' && CATEGORY_LIST.some(function(cat){ return normalizeText(cat) === q; });
 
     categorySuggestions.innerHTML = '';
-    if(matches.length === 0){
-      categorySuggestions.classList.remove('show');
-      return;
-    }
+
     matches.forEach(function(cat){
       var item = document.createElement('div');
       item.className = 'combobox-item';
@@ -768,7 +908,24 @@
       });
       categorySuggestions.appendChild(item);
     });
-    categorySuggestions.classList.add('show');
+
+    // Si lo que escribió no está en la lista, dejamos crear una categoría nueva
+    if(trimmed && !exactMatch){
+      var createItem = document.createElement('div');
+      createItem.className = 'combobox-item combobox-item-create';
+      createItem.textContent = '➕ Crear categoría "' + trimmed + '"';
+      createItem.addEventListener('click', function(){
+        categoryInput.value = trimmed;
+        categorySuggestions.classList.remove('show');
+      });
+      categorySuggestions.appendChild(createItem);
+    }
+
+    if(categorySuggestions.children.length === 0){
+      categorySuggestions.classList.remove('show');
+    } else {
+      categorySuggestions.classList.add('show');
+    }
   }
 
   categoryInput.addEventListener('input', function(){
@@ -814,6 +971,15 @@
     el.className = 'save-status show' + (isError ? ' error' : '');
   }
 
+  var SAVE_MESSAGES = [
+    '✅ Guardado. Recetamos comprar la más barata.',
+    '✅ Guardado en la historia clínica del changuito.',
+    '✅ Guardado. El Dr. Bañares dio el alta a esta comparación.',
+    '✅ Guardado. Precisión clínica, doctor.',
+    '✅ Guardado. Este nivel de detalle salva bolsillos.',
+    '✅ Guardado en el historial. Sesión de compras exitosa.'
+  ];
+
   function saveContribution(){
     if(!lastComparison) return;
     var categoria = categoryInput.value.trim() || 'Sin categoría';
@@ -830,7 +996,8 @@
       showSaveStatus('No se pudo guardar (almacenamiento local no disponible en este navegador).', true);
       return;
     }
-    showSaveStatus('✅ Guardado en el historial');
+    var msg = SAVE_MESSAGES[Math.floor(Math.random() * SAVE_MESSAGES.length)];
+    showSaveStatus(msg);
     renderHistory();
   }
 
@@ -871,9 +1038,17 @@
     delBtn.title = 'Borrar';
     delBtn.textContent = '✕';
     delBtn.addEventListener('click', function(){
-      var remaining = loadContributions().filter(function(x){ return x.id !== c.id; });
-      saveContributions(remaining);
-      renderHistory();
+      item.classList.add('removing');
+      var done = false;
+      var finish = function(){
+        if(done) return;
+        done = true;
+        var remaining = loadContributions().filter(function(x){ return x.id !== c.id; });
+        saveContributions(remaining);
+        renderHistory();
+      };
+      item.addEventListener('transitionend', finish, { once: true });
+      setTimeout(finish, 400);
     });
 
     top.appendChild(catEl);
@@ -934,12 +1109,45 @@
       listEl.appendChild(empty);
       return;
     }
-    filtered.forEach(function(c){
-      listEl.appendChild(buildHistoryItemElement(c));
+    filtered.forEach(function(c, idx){
+      var el = buildHistoryItemElement(c);
+      el.style.setProperty('--i', Math.min(idx, 6));
+      listEl.appendChild(el);
     });
   }
 
   $('#historyFilter').addEventListener('change', renderHistory);
+
+  // --- Guiños para el Dr. Bañares ---
+  var easterToast = $('#easterToast');
+
+  function showEasterEggToast(msg){
+    if(!easterToast) return;
+    easterToast.innerHTML = '';
+    var span = document.createElement('span');
+    span.textContent = msg;
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'toast-close';
+    closeBtn.title = 'Cerrar';
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', function(){
+      easterToast.classList.remove('show');
+    });
+    easterToast.appendChild(span);
+    easterToast.appendChild(closeBtn);
+    easterToast.classList.add('show');
+  }
+
+  // Basado en observación de campo: el Dr. Bañares se queda ~40 minutos
+  // comparando precios. Le avisamos a mitad de camino y al llegar.
+  setTimeout(function(){
+    showEasterEggToast('Van 20 minutos comparando precios, doctor. A este ritmo, en 40 encuentra la ganga del año. 🩺');
+  }, 20 * 60 * 1000);
+
+  setTimeout(function(){
+    showEasterEggToast('40 minutos comparando precios. Esto ya es un estudio de mercado con nivel de tesis doctoral. 📊');
+  }, 40 * 60 * 1000);
 
   // --- Arranque: 2 productos por defecto ---
   addProduct();
