@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>Comparador de precios</title>
+<title>Bañares Express Pricing</title>
 <style>
   :root{
     --accent:#2563eb;
@@ -509,8 +509,8 @@
 
 <div class="toast" id="easterToast"></div>
 
-<h1><span class="emoji-bounce">🛒</span> Comparador de precios</h1>
-<div class="version-tag">v2.2 · 2026-07-09 · 150+ categorías, animaciones</div>
+<h1><span class="emoji-bounce">🛒</span> Bañares Express Pricing</h1>
+<div class="version-tag">v2.3 · 2026-07-09 · más categorías, teclado automático</div>
 <div class="tagline">Edición especial para el Dr. Pablo Bañares — precisión clínica por mililitro.</div>
 
 <div class="field category-field">
@@ -533,7 +533,7 @@
   <div class="history-list" id="historyList"></div>
 </div>
 
-<div class="easter-egg-footer">🥚 Chiste recurrente que solo entienden 19 personas. Si sos una de ellas, ya sabés de qué hablo.</div>
+<div class="easter-egg-footer">🥚 Útil para el Dr. Bañares y otras 19 personas...</div>
 
 <!-- Panel de resultado -->
 <div class="result-panel placeholder" id="resultPanel">
@@ -737,6 +737,7 @@
     });
 
     if(valid.length < 2){
+      cancelHideKeyboard();
       resultPanel.className = 'result-panel placeholder';
       resultPanel.textContent = 'Cargá precio y cantidad de al menos 2 productos para ver la comparación.';
       return;
@@ -752,6 +753,7 @@
     });
 
     if(computed.length < 2){
+      cancelHideKeyboard();
       resultPanel.className = 'result-panel placeholder';
       resultPanel.textContent = 'Revisá los valores cargados: precio y cantidad tienen que ser mayores a cero.';
       return;
@@ -767,6 +769,7 @@
     var comparableKeys = categoryKeys.filter(function(k){ return groups[k].length >= 2; });
 
     if(comparableKeys.length === 0){
+      cancelHideKeyboard();
       lastComparison = null;
       resultPanel.className = 'result-panel show';
       resultPanel.innerHTML = '<div class="result-warning">⚠️ No hay dos productos con el mismo tipo de unidad (peso / volumen / unidades) para comparar.</div>';
@@ -839,6 +842,37 @@
 
     resultPanel.className = 'result-panel show';
     resultPanel.innerHTML = html;
+
+    // Escondemos el teclado recién cuando el usuario deja de tipear un
+    // rato con un resultado válido en pantalla (debounce), nunca a mitad
+    // de tecleo: si escondiéramos apenas el valor se vuelve válido (ej.
+    // al escribir el primer "2" de "2,25"), el input pierde el foco y
+    // los caracteres siguientes se pierden.
+    scheduleHideKeyboard();
+  }
+
+  var hideKeyboardTimer = null;
+
+  function scheduleHideKeyboard(){
+    if(hideKeyboardTimer) clearTimeout(hideKeyboardTimer);
+    hideKeyboardTimer = setTimeout(function(){
+      hideKeyboardTimer = null;
+      hideKeyboard();
+    }, 700);
+  }
+
+  function cancelHideKeyboard(){
+    if(hideKeyboardTimer){
+      clearTimeout(hideKeyboardTimer);
+      hideKeyboardTimer = null;
+    }
+  }
+
+  function hideKeyboard(){
+    var active = document.activeElement;
+    if(active && typeof active.blur === 'function' && active !== document.body){
+      active.blur();
+    }
   }
 
   // --- Categoría: combobox con buscador predictivo ---
@@ -878,7 +912,10 @@
     'Alcohol en gel', 'Curitas', 'Protector solar', 'Rasuradoras', 'Espuma de afeitar',
     'Pañales', 'Toallitas para bebé', 'Leche de fórmula', 'Toallas femeninas', 'Protectores diarios', 'Tampones', 'Preservativos',
     'Alimento para perros', 'Alimento para gatos', 'Arena sanitaria', 'Snacks para mascotas',
-    'Pilas', 'Velas', 'Fósforos', 'Carbón', 'Repelente de insectos'
+    'Pilas', 'Velas', 'Fósforos', 'Carbón', 'Repelente de insectos',
+    'Leche larga vida', 'Queso blanco', 'Tratamiento capilar', 'Soda (sifón)',
+    'Vino en caja', 'Pan rallado', 'Sémola', 'Tapioca', 'Comidas preparadas',
+    'Milanesas de soja', 'Aceite en aerosol'
   ];
 
   function normalizeText(str){
