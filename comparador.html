@@ -38,6 +38,58 @@
     color:var(--muted);
     margin:0 0 18px;
   }
+  .category-field{
+    margin-bottom:16px;
+  }
+  .category-field label{
+    display:block;
+    font-size:0.82rem;
+    color:var(--muted);
+    margin-bottom:5px;
+    font-weight:600;
+  }
+  .combobox{
+    position:relative;
+  }
+  .combobox input{
+    width:100%;
+    padding:13px 12px;
+    font-size:1.05rem;
+    border:1.5px solid var(--border);
+    border-radius:10px;
+    background:#fafafa;
+    color:var(--text);
+    font-family:inherit;
+  }
+  .combobox input:focus{
+    outline:none;
+    border-color:var(--accent);
+    background:#fff;
+  }
+  .combobox-suggestions{
+    display:none;
+    position:absolute;
+    left:0;
+    right:0;
+    top:calc(100% + 4px);
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:10px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.12);
+    max-height:220px;
+    overflow-y:auto;
+    z-index:50;
+  }
+  .combobox-suggestions.show{display:block;}
+  .combobox-item{
+    padding:12px 14px;
+    font-size:0.95rem;
+    cursor:pointer;
+    border-bottom:1px solid var(--border);
+  }
+  .combobox-item:last-child{border-bottom:none;}
+  .combobox-item:active{background:#f0f2f5;}
+
   .cards{
     display:flex;
     flex-direction:column;
@@ -136,6 +188,100 @@
     width:100%;
   }
   .btn-add:active{background:#e2e5ec;}
+  .btn-save{
+    background:var(--accent);
+    color:#fff;
+    width:100%;
+    margin-top:14px;
+  }
+  .btn-save:active{background:var(--accent-dark);}
+  .save-status{
+    text-align:center;
+    font-size:0.82rem;
+    margin-top:8px;
+    display:none;
+    color:var(--green);
+    font-weight:600;
+  }
+  .save-status.show{display:block;}
+  .save-status.error{color:var(--red);}
+
+  .history-section{
+    margin-top:24px;
+  }
+  .history-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .history-header h2{
+    font-size:1rem;
+    margin:0;
+  }
+  .history-header select{
+    font-size:0.85rem;
+    padding:8px 10px;
+    border:1.5px solid var(--border);
+    border-radius:8px;
+    background:#fafafa;
+    color:var(--text);
+    max-width:55%;
+  }
+  .history-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .history-item{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px 14px;
+  }
+  .history-item-top{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .history-cat{
+    background:var(--accent);
+    color:#fff;
+    font-size:0.72rem;
+    font-weight:700;
+    padding:3px 9px;
+    border-radius:999px;
+  }
+  .history-date{
+    font-size:0.75rem;
+    color:var(--muted);
+    flex:1;
+  }
+  .history-delete{
+    background:none;
+    border:none;
+    color:var(--muted);
+    font-size:1.05rem;
+    cursor:pointer;
+    padding:2px 6px;
+    line-height:1;
+  }
+  .history-winner{
+    font-size:0.88rem;
+    font-weight:600;
+    color:var(--green);
+  }
+  .history-winner + .history-winner{
+    margin-top:2px;
+  }
+  .history-empty{
+    text-align:center;
+    color:var(--muted);
+    font-size:0.85rem;
+    padding:12px;
+  }
 
   /* Panel resultado sticky */
   .result-panel{
@@ -250,11 +396,27 @@
 <body>
 
 <h1>🛒 Comparador de precios</h1>
-<div class="version-tag">v2.0 · 2026-07-09 · N productos, sin cámara/API</div>
+<div class="version-tag">v2.1 · 2026-07-09 · categoría + historial guardado</div>
+
+<div class="field category-field">
+  <label>Categoría (los productos que vas a comparar)</label>
+  <div class="combobox">
+    <input type="text" id="categoryInput" placeholder="Ej: mantecas, yogures, servilletas..." autocomplete="off">
+    <div class="combobox-suggestions" id="categorySuggestions"></div>
+  </div>
+</div>
 
 <div class="cards" id="productsContainer"></div>
 
 <button type="button" class="btn btn-add" id="addProductBtn">➕ Agregar producto</button>
+
+<div class="history-section" id="historySection" style="display:none;">
+  <div class="history-header">
+    <h2>📋 Historial</h2>
+    <select id="historyFilter"><option value="">Todas las categorías</option></select>
+  </div>
+  <div class="history-list" id="historyList"></div>
+</div>
 
 <!-- Panel de resultado -->
 <div class="result-panel placeholder" id="resultPanel">
@@ -488,6 +650,7 @@
     var comparableKeys = categoryKeys.filter(function(k){ return groups[k].length >= 2; });
 
     if(comparableKeys.length === 0){
+      lastComparison = null;
       resultPanel.className = 'result-panel show';
       resultPanel.innerHTML = '<div class="result-warning">⚠️ No hay dos productos con el mismo tipo de unidad (peso / volumen / unidades) para comparar.</div>';
       return;
@@ -504,9 +667,24 @@
       html += '<div class="result-note">Hay unidades de distinto tipo (peso / volumen / unidades): comparamos por separado.</div>';
     }
 
+    var comparisonGroups = [];
+
     comparableKeys.forEach(function(catKey, groupIdx){
       var group = groups[catKey].slice().sort(function(a, b){ return a.unitPrice - b.unitPrice; });
       var winner = group[0];
+
+      comparisonGroups.push({
+        unitLabel: group[0].label,
+        items: group.map(function(item){
+          return {
+            nombre: productLabel(item.product),
+            precio: item.product.price,
+            cantidad: item.product.qty,
+            unidad: item.product.unit,
+            precioNormalizado: item.unitPrice
+          };
+        })
+      });
 
       html += '<div class="result-group">';
       if(categoryKeys.length > 1){
@@ -537,13 +715,236 @@
       html += '<div class="result-leftover">Sin comparables (unidad distinta): ' + names + '</div>';
     }
 
+    lastComparison = { groups: comparisonGroups };
+
+    html += '<button type="button" class="btn btn-save" id="saveContribBtn">💾 Guardar esta comparación</button>';
+    html += '<div class="save-status" id="saveStatus"></div>';
+
     resultPanel.className = 'result-panel show';
     resultPanel.innerHTML = html;
   }
 
+  // --- Categoría: combobox con buscador predictivo ---
+  var CATEGORY_LIST = [
+    'Lácteos', 'Leches', 'Yogures', 'Quesos', 'Mantecas y margarinas',
+    'Huevos', 'Panificados', 'Fideos y pastas', 'Arroz', 'Legumbres',
+    'Harinas', 'Aceites', 'Vinagres y aderezos', 'Azúcar y edulcorantes',
+    'Sal y condimentos', 'Conservas', 'Salsas', 'Café, té e infusiones',
+    'Cacao y achocolatados', 'Galletitas', 'Snacks y papas fritas',
+    'Golosinas y chocolates', 'Cereales y barritas', 'Gaseosas', 'Aguas',
+    'Jugos', 'Cervezas', 'Vinos', 'Congelados', 'Fiambres y embutidos',
+    'Carnes', 'Verdulería y frutas', 'Panadería', 'Repostería',
+    'Limpieza del hogar', 'Lavandina y desinfectantes', 'Detergentes',
+    'Suavizantes', 'Papel higiénico', 'Servilletas', 'Rollo de cocina',
+    'Shampoo y acondicionador', 'Jabones', 'Pasta dental',
+    'Desodorantes', 'Pañales', 'Toallitas húmedas', 'Mascotas'
+  ];
+
+  function normalizeText(str){
+    return String(str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  var categoryInput = $('#categoryInput');
+  var categorySuggestions = $('#categorySuggestions');
+
+  function renderCategorySuggestions(query){
+    var q = normalizeText(query);
+    var matches = !q
+      ? CATEGORY_LIST.slice(0, 8)
+      : CATEGORY_LIST.filter(function(cat){ return normalizeText(cat).indexOf(q) !== -1; }).slice(0, 8);
+
+    categorySuggestions.innerHTML = '';
+    if(matches.length === 0){
+      categorySuggestions.classList.remove('show');
+      return;
+    }
+    matches.forEach(function(cat){
+      var item = document.createElement('div');
+      item.className = 'combobox-item';
+      item.textContent = cat;
+      item.addEventListener('click', function(){
+        categoryInput.value = cat;
+        categorySuggestions.classList.remove('show');
+      });
+      categorySuggestions.appendChild(item);
+    });
+    categorySuggestions.classList.add('show');
+  }
+
+  categoryInput.addEventListener('input', function(){
+    renderCategorySuggestions(categoryInput.value);
+  });
+  categoryInput.addEventListener('focus', function(){
+    renderCategorySuggestions(categoryInput.value);
+  });
+  document.addEventListener('click', function(e){
+    if(!e.target.closest || !e.target.closest('.combobox')){
+      categorySuggestions.classList.remove('show');
+    }
+  });
+
+  // --- Guardar contribuciones (localStorage) ---
+  var STORAGE_KEY = 'comparador_contribuciones_v1';
+  var lastComparison = null;
+
+  function loadContributions(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return [];
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function saveContributions(list){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function showSaveStatus(msg, isError){
+    var el = $('#saveStatus');
+    if(!el) return;
+    el.textContent = msg;
+    el.className = 'save-status show' + (isError ? ' error' : '');
+  }
+
+  function saveContribution(){
+    if(!lastComparison) return;
+    var categoria = categoryInput.value.trim() || 'Sin categoría';
+    var record = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      categoria: categoria,
+      fecha: new Date().toISOString(),
+      grupos: lastComparison.groups
+    };
+    var all = loadContributions();
+    all.unshift(record);
+    var ok = saveContributions(all);
+    if(!ok){
+      showSaveStatus('No se pudo guardar (almacenamiento local no disponible en este navegador).', true);
+      return;
+    }
+    showSaveStatus('✅ Guardado en el historial');
+    renderHistory();
+  }
+
+  resultPanel.addEventListener('click', function(e){
+    var btn = e.target.closest && e.target.closest('#saveContribBtn');
+    if(btn) saveContribution();
+  });
+
+  // --- Historial de comparaciones guardadas ---
+  function formatDate(iso){
+    try{
+      var d = new Date(iso);
+      return d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' }) +
+        ' ' + d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+    }catch(e){
+      return '';
+    }
+  }
+
+  function buildHistoryItemElement(c){
+    var item = document.createElement('div');
+    item.className = 'history-item';
+
+    var top = document.createElement('div');
+    top.className = 'history-item-top';
+
+    var catEl = document.createElement('span');
+    catEl.className = 'history-cat';
+    catEl.textContent = c.categoria;
+
+    var dateEl = document.createElement('span');
+    dateEl.className = 'history-date';
+    dateEl.textContent = formatDate(c.fecha);
+
+    var delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'history-delete';
+    delBtn.title = 'Borrar';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', function(){
+      var remaining = loadContributions().filter(function(x){ return x.id !== c.id; });
+      saveContributions(remaining);
+      renderHistory();
+    });
+
+    top.appendChild(catEl);
+    top.appendChild(dateEl);
+    top.appendChild(delBtn);
+    item.appendChild(top);
+
+    (c.grupos || []).forEach(function(g){
+      var sorted = (g.items || []).slice().sort(function(a, b){ return a.precioNormalizado - b.precioNormalizado; });
+      if(sorted.length === 0) return;
+      var winner = sorted[0];
+      var w = document.createElement('div');
+      w.className = 'history-winner';
+      w.textContent = '🏆 ' + winner.nombre + ' — $' + formatARS(winner.precioNormalizado) + ' ' + g.unitLabel;
+      item.appendChild(w);
+    });
+
+    return item;
+  }
+
+  function renderHistory(){
+    var all = loadContributions();
+    var section = $('#historySection');
+    var filterSelect = $('#historyFilter');
+    var listEl = $('#historyList');
+
+    if(all.length === 0){
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = '';
+
+    var distinctCats = [];
+    all.forEach(function(c){
+      if(distinctCats.indexOf(c.categoria) === -1) distinctCats.push(c.categoria);
+    });
+    var currentFilter = filterSelect.value;
+    filterSelect.innerHTML = '';
+    var allOption = document.createElement('option');
+    allOption.value = '';
+    allOption.textContent = 'Todas las categorías';
+    filterSelect.appendChild(allOption);
+    distinctCats.forEach(function(cat){
+      var opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      filterSelect.appendChild(opt);
+    });
+    filterSelect.value = distinctCats.indexOf(currentFilter) !== -1 ? currentFilter : '';
+
+    var filtered = filterSelect.value ? all.filter(function(c){ return c.categoria === filterSelect.value; }) : all;
+
+    listEl.innerHTML = '';
+    if(filtered.length === 0){
+      var empty = document.createElement('div');
+      empty.className = 'history-empty';
+      empty.textContent = 'No hay comparaciones guardadas en esta categoría.';
+      listEl.appendChild(empty);
+      return;
+    }
+    filtered.forEach(function(c){
+      listEl.appendChild(buildHistoryItemElement(c));
+    });
+  }
+
+  $('#historyFilter').addEventListener('change', renderHistory);
+
   // --- Arranque: 2 productos por defecto ---
   addProduct();
   addProduct();
+  renderHistory();
 
 })();
 </script>
