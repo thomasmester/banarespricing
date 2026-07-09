@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>Comparador de precios</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <style>
   :root{
     --accent:#2563eb;
@@ -25,7 +24,7 @@
     color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     padding:16px;
-    padding-bottom:180px; /* espacio para el panel sticky de resultado */
+    padding-bottom:220px; /* espacio para el panel sticky de resultado */
     -webkit-tap-highlight-color:transparent;
   }
   h1{
@@ -51,14 +50,20 @@
     padding:16px;
     box-shadow:0 1px 3px rgba(0,0,0,0.05);
   }
-  .card h2{
+  .card-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
     margin:0 0 12px;
+  }
+  .card-head h2{
+    margin:0;
     font-size:1.05rem;
     display:flex;
     align-items:center;
     gap:8px;
   }
-  .card h2 .badge{
+  .badge{
     background:var(--accent);
     color:#fff;
     width:26px;
@@ -69,48 +74,25 @@
     justify-content:center;
     font-size:0.85rem;
     font-weight:700;
-  }
-  .scan-row{
-    display:flex;
-    gap:10px;
-    align-items:center;
-    margin-bottom:14px;
-  }
-  .btn{
-    border:none;
-    border-radius:12px;
-    padding:14px 16px;
-    font-size:1rem;
-    font-weight:600;
-    cursor:pointer;
-    touch-action:manipulation;
-  }
-  .btn-scan{
-    background:var(--accent);
-    color:#fff;
-    flex:1;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-  }
-  .btn-scan:active{background:var(--accent-dark);}
-  .btn-secondary{
-    background:#eef0f4;
-    color:var(--text);
-  }
-  .thumb{
-    width:52px;
-    height:52px;
-    border-radius:10px;
-    object-fit:cover;
-    background:#f0f0f0;
     flex-shrink:0;
-    border:1px solid var(--border);
+  }
+  .remove-btn{
+    display:none;
+    background:none;
+    border:none;
+    color:var(--muted);
+    font-size:1.2rem;
+    line-height:1;
+    padding:6px 8px;
+    cursor:pointer;
+  }
+  .cards.can-remove .remove-btn{
+    display:block;
   }
   .field{
     margin-bottom:12px;
   }
+  .field:last-child{margin-bottom:0;}
   .field label{
     display:block;
     font-size:0.82rem;
@@ -137,69 +119,23 @@
     display:flex;
     gap:10px;
   }
-  .qty-row .field{flex:1;}
+  .qty-row .field{flex:1;margin-bottom:0;}
   .qty-row .field.unit{flex:0 0 90px;}
-  .status-msg{
-    font-size:0.85rem;
-    padding:8px 10px;
-    border-radius:8px;
-    margin-bottom:12px;
-    display:none;
-  }
-  .status-msg.show{display:block;}
-  .status-msg.info{background:#eef2ff;color:#3730a3;}
-  .status-msg.warn{background:#fff7e6;color:#92620a;}
-  .status-msg.error{background:#fdeaea;color:#a31515;}
-
-  /* Modal escaneo */
-  .modal-overlay{
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,0.75);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:1000;
-    padding:16px;
-  }
-  .modal-overlay.show{display:flex;}
-  .modal-box{
-    background:#000;
-    border-radius:16px;
-    width:100%;
-    max-width:420px;
-    overflow:hidden;
-    position:relative;
-  }
-  .modal-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:12px 14px;
-    background:#111;
-    color:#fff;
-  }
-  .modal-header span{font-weight:600;font-size:0.95rem;}
-  .modal-close{
-    background:none;
+  .btn{
     border:none;
-    color:#fff;
-    font-size:1.4rem;
+    border-radius:12px;
+    padding:14px 16px;
+    font-size:1rem;
+    font-weight:600;
     cursor:pointer;
-    line-height:1;
-    padding:4px 8px;
+    touch-action:manipulation;
   }
-  #reader{
+  .btn-add{
+    background:#eef0f4;
+    color:var(--accent);
     width:100%;
-    min-height:280px;
-    background:#000;
   }
-  .modal-footer-msg{
-    color:#eee;
-    font-size:0.82rem;
-    text-align:center;
-    padding:10px 14px 16px;
-  }
+  .btn-add:active{background:#e2e5ec;}
 
   /* Panel resultado sticky */
   .result-panel{
@@ -213,6 +149,8 @@
     box-shadow:0 -4px 16px rgba(0,0,0,0.08);
     z-index:500;
     display:none;
+    max-height:55vh;
+    overflow-y:auto;
   }
   .result-panel.show{display:block;}
   .result-panel.placeholder{
@@ -222,48 +160,73 @@
     font-size:0.88rem;
     padding:16px;
   }
-  .result-compare{
-    display:flex;
-    gap:10px;
-  }
-  .result-item{
-    flex:1;
-    border-radius:14px;
-    padding:12px 10px;
+  .result-note{
     text-align:center;
-    background:#f6f7f9;
-    border:2px solid transparent;
-  }
-  .result-item.winner{
-    background:var(--green-bg);
-    border-color:var(--green);
-  }
-  .result-item .r-label{
-    font-size:0.75rem;
+    font-size:0.78rem;
     color:var(--muted);
+    margin-bottom:10px;
+  }
+  .result-group + .result-group{
+    margin-top:16px;
+    padding-top:16px;
+    border-top:1px solid var(--border);
+  }
+  .result-group-title{
+    font-size:0.75rem;
     font-weight:700;
+    color:var(--muted);
     text-transform:uppercase;
     letter-spacing:0.03em;
+    margin-bottom:8px;
   }
-  .result-item.winner .r-label{color:var(--green);}
-  .result-item .r-price{
-    font-size:1.9rem;
-    font-weight:800;
-    line-height:1.15;
-    margin:4px 0 2px;
-    letter-spacing:-0.02em;
+  .result-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 10px;
+    border-radius:12px;
+    background:#f6f7f9;
   }
-  .result-item.winner .r-price{color:var(--green);}
-  .result-item .r-unit{
+  .result-row + .result-row{
+    margin-top:8px;
+  }
+  .result-row.winner{
+    background:var(--green-bg);
+    border:2px solid var(--green);
+  }
+  .result-rank{
+    font-size:1.1rem;
+    width:28px;
+    text-align:center;
+    flex-shrink:0;
+  }
+  .result-info{
+    flex:1;
+    min-width:0;
+  }
+  .result-name{
+    font-weight:600;
+    font-size:0.92rem;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .result-sub{
     font-size:0.78rem;
     color:var(--muted);
   }
-  .result-tag{
-    text-align:center;
-    margin-top:10px;
-    font-size:0.95rem;
-    font-weight:700;
+  .result-row.winner .result-sub{color:var(--green);font-weight:600;}
+  .result-price{
+    font-weight:800;
+    font-size:1.15rem;
+    text-align:right;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .result-row.winner .result-price{
     color:var(--green);
+    font-size:2rem;
+    letter-spacing:-0.02em;
   }
   .result-warning{
     text-align:center;
@@ -271,6 +234,12 @@
     font-weight:600;
     font-size:0.9rem;
     padding:8px 0;
+  }
+  .result-leftover{
+    text-align:center;
+    font-size:0.75rem;
+    color:var(--muted);
+    margin-top:12px;
   }
 
   @media (min-width:600px){
@@ -281,132 +250,36 @@
 <body>
 
 <h1>🛒 Comparador de precios</h1>
-<div class="version-tag">v1.9 · 2026-07-08 · 404 = no encontrado, no error</div>
+<div class="version-tag">v2.0 · 2026-07-09 · N productos, sin cámara/API</div>
 
-<div class="cards">
-  <!-- PRODUCTO A -->
-  <div class="card" data-card="A">
-    <h2><span class="badge">A</span> Producto A</h2>
-    <div class="scan-row">
-      <button class="btn btn-scan" data-action="scan" data-target="A">📷 Escanear código</button>
-      <img class="thumb" data-role="thumb" style="display:none;">
-    </div>
-    <div class="status-msg" data-role="status"></div>
-    <div class="field">
-      <label>Nombre del producto</label>
-      <input type="text" data-role="name" placeholder="Ej: Coca-Cola 1.5L">
-    </div>
-    <div class="field">
-      <label>Precio (ARS)</label>
-      <input type="text" inputmode="decimal" data-role="price" placeholder="0,00">
-    </div>
-    <div class="qty-row">
-      <div class="field">
-        <label>Cantidad</label>
-        <input type="text" inputmode="decimal" data-role="qty" placeholder="0">
-      </div>
-      <div class="field unit">
-        <label>Unidad</label>
-        <select data-role="unit">
-          <option value="g">g</option>
-          <option value="kg">kg</option>
-          <option value="ml">ml</option>
-          <option value="L">L</option>
-          <option value="unidades">un.</option>
-        </select>
-      </div>
-    </div>
-  </div>
+<div class="cards" id="productsContainer"></div>
 
-  <!-- PRODUCTO B -->
-  <div class="card" data-card="B">
-    <h2><span class="badge">B</span> Producto B</h2>
-    <div class="scan-row">
-      <button class="btn btn-scan" data-action="scan" data-target="B">📷 Escanear código</button>
-      <img class="thumb" data-role="thumb" style="display:none;">
-    </div>
-    <div class="status-msg" data-role="status"></div>
-    <div class="field">
-      <label>Nombre del producto</label>
-      <input type="text" data-role="name" placeholder="Ej: Coca-Cola 2.25L">
-    </div>
-    <div class="field">
-      <label>Precio (ARS)</label>
-      <input type="text" inputmode="decimal" data-role="price" placeholder="0,00">
-    </div>
-    <div class="qty-row">
-      <div class="field">
-        <label>Cantidad</label>
-        <input type="text" inputmode="decimal" data-role="qty" placeholder="0">
-      </div>
-      <div class="field unit">
-        <label>Unidad</label>
-        <select data-role="unit">
-          <option value="g">g</option>
-          <option value="kg">kg</option>
-          <option value="ml">ml</option>
-          <option value="L">L</option>
-          <option value="unidades">un.</option>
-        </select>
-      </div>
-    </div>
-  </div>
-</div>
+<button type="button" class="btn btn-add" id="addProductBtn">➕ Agregar producto</button>
 
 <!-- Panel de resultado -->
 <div class="result-panel placeholder" id="resultPanel">
-  Cargá precio y cantidad de los dos productos para ver la comparación.
-</div>
-
-<!-- Modal de escaneo -->
-<div class="modal-overlay" id="scanModal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <span id="scanModalTitle">Escaneando...</span>
-      <button class="modal-close" id="scanModalClose">&times;</button>
-    </div>
-    <div id="reader"></div>
-    <div class="modal-footer-msg">Apuntá la cámara al código de barras del producto.<br>Si se ve borroso, alejalo un poco (~10-15cm): la mayoría de los celus no enfocan más cerca.</div>
-  </div>
+  Cargá precio y cantidad de al menos 2 productos para ver la comparación.
 </div>
 
 <script>
 (function(){
   "use strict";
 
-  var state = {
-    A: { name:"", price:null, qty:null, unit:"g" },
-    B: { name:"", price:null, qty:null, unit:"g" }
-  };
-
-  var html5QrCode = null;
-  var currentScanTarget = null;
+  var products = [];
+  var nextId = 1;
 
   function $(sel, ctx){ return (ctx||document).querySelector(sel); }
   function $$(sel, ctx){ return Array.prototype.slice.call((ctx||document).querySelectorAll(sel)); }
 
-  function getCard(target){ return $('.card[data-card="' + target + '"]'); }
-
-  function showStatus(target, msg, type){
-    var card = getCard(target);
-    var el = $('[data-role="status"]', card);
-    if(!msg){
-      el.classList.remove('show','info','warn','error');
-      el.textContent = '';
-      return;
-    }
-    el.textContent = msg;
-    el.className = 'status-msg show ' + (type || 'info');
-  }
+  var productsContainer = $('#productsContainer');
+  var resultPanel = $('#resultPanel');
 
   // --- Parseo de número flexible: acepta coma o punto decimal ---
   function parseFlexibleNumber(str){
     if(str === null || str === undefined) return null;
     str = String(str).trim();
     if(str === '') return null;
-    // quitar separadores de miles simples y normalizar coma decimal a punto
     str = str.replace(/\s/g,'');
-    // si tiene coma y punto, asumimos punto = miles, coma = decimal
     if(str.indexOf(',') !== -1 && str.indexOf('.') !== -1){
       str = str.replace(/\./g,'').replace(',', '.');
     } else if(str.indexOf(',') !== -1){
@@ -431,31 +304,20 @@
     return null;
   }
 
-  // Normaliza cantidad a la unidad base de comparación (kg, L o unidades)
-  // y devuelve también la etiqueta de precio normalizado ($/kg, $/L, $/unidad)
   function normalize(qty, unit){
     var cat = unitCategory(unit);
     if(cat === 'peso'){
       var kg = unit === 'kg' ? qty : qty / 1000;
-      return { baseQty: kg, label: '$/kg', unitLabel: 'kg' };
+      return { baseQty: kg, label: '$/kg' };
     }
     if(cat === 'volumen'){
       var l = unit === 'L' ? qty : qty / 1000;
-      return { baseQty: l, label: '$/L', unitLabel: 'L' };
+      return { baseQty: l, label: '$/L' };
     }
     if(cat === 'unidad'){
-      return { baseQty: qty, label: '$/unidad', unitLabel: 'un.' };
+      return { baseQty: qty, label: '$/unidad' };
     }
     return null;
-  }
-
-  function readProductInputs(target){
-    var card = getCard(target);
-    var name = $('[data-role="name"]', card).value.trim();
-    var price = parseFlexibleNumber($('[data-role="price"]', card).value);
-    var qty = parseFlexibleNumber($('[data-role="qty"]', card).value);
-    var unit = $('[data-role="unit"]', card).value;
-    state[target] = { name: name, price: price, qty: qty, unit: unit };
   }
 
   function computeUnitPrice(p){
@@ -469,72 +331,6 @@
     return { unitPrice: unitPrice, label: norm.label };
   }
 
-  function renderResult(){
-    var panel = $('#resultPanel');
-    var a = state.A, b = state.B;
-
-    var aHasBasics = a.price !== null && a.qty !== null && a.price > 0 && a.qty > 0;
-    var bHasBasics = b.price !== null && b.qty !== null && b.price > 0 && b.qty > 0;
-
-    if(!aHasBasics || !bHasBasics){
-      panel.className = 'result-panel placeholder';
-      panel.textContent = 'Cargá precio y cantidad de los dos productos para ver la comparación.';
-      return;
-    }
-
-    var catA = unitCategory(a.unit);
-    var catB = unitCategory(b.unit);
-
-    if(catA !== catB){
-      panel.className = 'result-panel show';
-      panel.innerHTML = '<div class="result-warning">⚠️ No se pueden comparar: "' +
-        escapeHtml(a.unit) + '" y "' + escapeHtml(b.unit) + '" son unidades de distinto tipo (peso / volumen / unidades).</div>';
-      return;
-    }
-
-    var ua = computeUnitPrice(a);
-    var ub = computeUnitPrice(b);
-
-    if(!ua || !ub){
-      panel.className = 'result-panel placeholder';
-      panel.textContent = 'Revisá los valores cargados: precio y cantidad tienen que ser mayores a cero.';
-      return;
-    }
-
-    var winner = ua.unitPrice < ub.unitPrice ? 'A' : (ub.unitPrice < ua.unitPrice ? 'B' : null);
-    var diffPct = null;
-    if(winner === 'A'){
-      diffPct = ((ub.unitPrice - ua.unitPrice) / ua.unitPrice) * 100;
-    } else if(winner === 'B'){
-      diffPct = ((ua.unitPrice - ub.unitPrice) / ub.unitPrice) * 100;
-    }
-
-    var nameA = a.name || 'Producto A';
-    var nameB = b.name || 'Producto B';
-
-    var html = '<div class="result-compare">';
-    html += '<div class="result-item' + (winner === 'A' ? ' winner' : '') + '">' +
-      '<div class="r-label">' + escapeHtml(truncate(nameA, 18)) + '</div>' +
-      '<div class="r-price">$' + formatARS(ua.unitPrice) + '</div>' +
-      '<div class="r-unit">' + ua.label + '</div></div>';
-    html += '<div class="result-item' + (winner === 'B' ? ' winner' : '') + '">' +
-      '<div class="r-label">' + escapeHtml(truncate(nameB, 18)) + '</div>' +
-      '<div class="r-price">$' + formatARS(ub.unitPrice) + '</div>' +
-      '<div class="r-unit">' + ub.label + '</div></div>';
-    html += '</div>';
-
-    if(winner){
-      var winnerName = winner === 'A' ? nameA : nameB;
-      html += '<div class="result-tag">🏆 Conviene ' + escapeHtml(winnerName) +
-        ' — es ' + formatARS(diffPct) + '% más barato que la otra opción</div>';
-    } else {
-      html += '<div class="result-tag" style="color:var(--text)">Ambos productos tienen el mismo precio normalizado</div>';
-    }
-
-    panel.className = 'result-panel show';
-    panel.innerHTML = html;
-  }
-
   function truncate(str, n){
     if(str.length <= n) return str;
     return str.slice(0, n - 1) + '…';
@@ -546,250 +342,223 @@
     return div.innerHTML;
   }
 
-  // --- Listeners de inputs: recalcular en vivo ---
-  ['A','B'].forEach(function(target){
-    var card = getCard(target);
-    ['name','price','qty','unit'].forEach(function(role){
-      var el = $('[data-role="' + role + '"]', card);
-      var evt = (el.tagName === 'SELECT') ? 'change' : 'input';
-      el.addEventListener(evt, function(){
-        readProductInputs(target);
+  function getProductById(id){
+    for(var i = 0; i < products.length; i++){
+      if(products[i].id === id) return products[i];
+    }
+    return null;
+  }
+
+  function productLabel(p){
+    var idx = products.indexOf(p);
+    return p.name || ('Producto ' + (idx + 1));
+  }
+
+  // --- Tarjetas de producto ---
+  function buildCardElement(p){
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.setAttribute('data-id', String(p.id));
+    card.innerHTML =
+      '<div class="card-head">' +
+        '<h2><span class="badge"></span> <span class="card-title"></span></h2>' +
+        '<button type="button" class="remove-btn" title="Quitar producto">✕</button>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Nombre del producto</label>' +
+        '<input type="text" data-role="name" placeholder="Ej: Coca-Cola 1.5L">' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Precio (ARS)</label>' +
+        '<input type="text" inputmode="decimal" data-role="price" placeholder="0,00">' +
+      '</div>' +
+      '<div class="qty-row">' +
+        '<div class="field">' +
+          '<label>Cantidad</label>' +
+          '<input type="text" inputmode="decimal" data-role="qty" placeholder="0">' +
+        '</div>' +
+        '<div class="field unit">' +
+          '<label>Unidad</label>' +
+          '<select data-role="unit">' +
+            '<option value="g">g</option>' +
+            '<option value="kg">kg</option>' +
+            '<option value="ml">ml</option>' +
+            '<option value="L">L</option>' +
+            '<option value="unidades">un.</option>' +
+          '</select>' +
+        '</div>' +
+      '</div>';
+
+    ['name','price','qty'].forEach(function(role){
+      $('[data-role="' + role + '"]', card).addEventListener('input', function(){
+        updateProductFromCard(p.id, card);
         renderResult();
       });
     });
-  });
+    $('[data-role="unit"]', card).addEventListener('change', function(){
+      updateProductFromCard(p.id, card);
+      renderResult();
+    });
+    $('.remove-btn', card).addEventListener('click', function(){
+      removeProduct(p.id);
+    });
 
-  // --- Parseo de cantidad desde string de Open Food Facts (ej "500 g", "1.5 L", "6 unidades") ---
-  function parseQuantityString(str){
-    if(!str) return null;
-    str = String(str).toLowerCase().replace(',', '.');
-    var m = str.match(/([\d.]+)\s*(kg|g|kilogramos?|gramos?|ml|mililitros?|l|litros?|unidades?|uds?|un\b|u\b)/i);
-    if(!m) return null;
-    var num = parseFloat(m[1]);
-    if(isNaN(num)) return null;
-    var rawUnit = m[2];
-    var unit = mapUnit(rawUnit);
-    if(!unit) return null;
-    return { qty: num, unit: unit };
+    return card;
   }
 
-  function mapUnit(raw){
-    raw = raw.toLowerCase();
-    if(raw === 'kg' || raw.indexOf('kilogram') === 0) return 'kg';
-    if(raw === 'g' || raw.indexOf('gramo') === 0) return 'g';
-    if(raw === 'ml' || raw.indexOf('mililitro') === 0) return 'ml';
-    if(raw === 'l' || raw.indexOf('litro') === 0) return 'L';
-    if(raw.indexOf('unidad') === 0 || raw === 'uds' || raw === 'ud' || raw === 'un' || raw === 'u') return 'unidades';
-    return null;
+  function updateProductFromCard(id, card){
+    var p = getProductById(id);
+    if(!p) return;
+    p.name = $('[data-role="name"]', card).value.trim();
+    p.price = parseFlexibleNumber($('[data-role="price"]', card).value);
+    p.qty = parseFlexibleNumber($('[data-role="qty"]', card).value);
+    p.unit = $('[data-role="unit"]', card).value;
   }
 
-  function mapOffUnit(raw){
-    if(!raw) return null;
-    raw = String(raw).toLowerCase().trim();
-    if(raw === 'kg') return 'kg';
-    if(raw === 'g') return 'g';
-    if(raw === 'l') return 'L';
-    if(raw === 'ml') return 'ml';
-    return null;
+  function renumberCards(){
+    $$('.card', productsContainer).forEach(function(card, idx){
+      $('.badge', card).textContent = String(idx + 1);
+      $('.card-title', card).textContent = 'Producto ' + (idx + 1);
+    });
   }
 
-  // --- Lookup Open Food Facts ---
-  function lookupProduct(ean, target){
-    showStatus(target, 'Buscando producto...', 'info');
-    var url = 'https://world.openfoodfacts.org/api/v2/product/' + encodeURIComponent(ean) +
-      '.json?fields=product_name,brands,quantity,product_quantity,product_quantity_unit,image_small_url';
-
-    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    var timedOut = false;
-    var timeoutId = setTimeout(function(){
-      timedOut = true;
-      if(controller) controller.abort();
-    }, 8000);
-
-    fetch(url, controller ? { signal: controller.signal } : {})
-      .then(function(res){
-        clearTimeout(timeoutId);
-        // Open Food Facts responde 404 cuando el código de barras no está
-        // cargado en su base (muy común con productos argentinos/locales).
-        // Eso NO es un error de la app: es el caso normal de "no lo
-        // tenemos", igual que status:0 en el body.
-        if(res.status === 404){
-          return { status: 0 };
-        }
-        if(!res.ok){
-          throw new Error('la API respondió ' + res.status + ' ' + res.statusText);
-        }
-        return res.json();
-      })
-      .then(function(data){
-        if(!data || data.status === 0 || !data.product){
-          showStatus(target, 'No encontramos ese producto en la base (no está cargado en Open Food Facts). Completá los datos a mano 👇', 'warn');
-          return;
-        }
-        applyProductData(target, data.product);
-      })
-      .catch(function(err){
-        clearTimeout(timeoutId);
-        var detail;
-        if(timedOut){
-          detail = 'se agotó el tiempo de espera (8s)';
-        } else if(err && err.name === 'AbortError'){
-          detail = 'la consulta fue cancelada';
-        } else if(err instanceof SyntaxError){
-          detail = 'la respuesta de la API no era JSON válido';
-        } else if(err && err.message){
-          detail = err.message;
-        } else {
-          detail = 'error desconocido';
-        }
-        showStatus(target, 'No pudimos consultar Open Food Facts (' + detail + '). Completá los datos a mano 👇', 'error');
-      });
+  function updateContainerState(){
+    productsContainer.classList.toggle('can-remove', products.length > 2);
   }
 
-  function applyProductData(target, product){
-    var card = getCard(target);
-    var nameParts = [];
-    if(product.product_name) nameParts.push(product.product_name);
-    if(product.brands) nameParts.push(product.brands);
-    var fullName = nameParts.join(' - ');
-
-    var filledSomething = false;
-
-    if(fullName){
-      $('[data-role="name"]', card).value = fullName;
-      filledSomething = true;
-    }
-
-    // Prioridad: product_quantity + product_quantity_unit (numéricos)
-    var qty = null, unit = null;
-    var pq = parseFlexibleNumber(product.product_quantity);
-    var pqUnit = mapOffUnit(product.product_quantity_unit);
-    if(pq !== null && pqUnit){
-      qty = pq;
-      unit = pqUnit;
-    } else if(product.quantity){
-      var parsed = parseQuantityString(product.quantity);
-      if(parsed){
-        qty = parsed.qty;
-        unit = parsed.unit;
-      }
-    }
-
-    if(qty !== null && unit){
-      $('[data-role="qty"]', card).value = String(qty);
-      $('[data-role="unit"]', card).value = unit;
-      filledSomething = true;
-    }
-
-    if(product.image_small_url){
-      var thumb = $('[data-role="thumb"]', card);
-      thumb.src = product.image_small_url;
-      thumb.style.display = 'block';
-    }
-
-    if(filledSomething){
-      showStatus(target, '✅ Producto encontrado. Revisá los datos y cargá el precio.', 'info');
-    } else {
-      showStatus(target, 'Encontramos el producto pero sin datos de cantidad. Completalo a mano 👇', 'warn');
-    }
-
-    readProductInputs(target);
+  function addProduct(){
+    var p = { id: nextId++, name:'', price:null, qty:null, unit:'g' };
+    products.push(p);
+    productsContainer.appendChild(buildCardElement(p));
+    renumberCards();
+    updateContainerState();
     renderResult();
   }
 
-  // --- Escaneo con html5-qrcode ---
-  var scanModal = $('#scanModal');
-  var scanModalTitle = $('#scanModalTitle');
+  function removeProduct(id){
+    var idx = -1;
+    for(var i = 0; i < products.length; i++){
+      if(products[i].id === id){ idx = i; break; }
+    }
+    if(idx === -1) return;
+    products.splice(idx, 1);
+    var card = $('.card[data-id="' + id + '"]', productsContainer);
+    if(card) card.remove();
+    renumberCards();
+    updateContainerState();
+    renderResult();
+  }
 
-  function openScanModal(target){
-    currentScanTarget = target;
-    scanModalTitle.textContent = 'Escaneando producto ' + target;
-    scanModal.classList.add('show');
-    showStatus(target, '', null);
+  $('#addProductBtn').addEventListener('click', addProduct);
 
-    if(typeof Html5Qrcode === 'undefined'){
-      showStatus(target, 'No se pudo cargar el lector de códigos. Cargá los datos a mano 👇', 'error');
-      closeScanModal();
+  // --- Comparación en vivo ---
+  function renderResult(){
+    var valid = products.filter(function(p){
+      return p.price !== null && p.qty !== null && p.price > 0 && p.qty > 0;
+    });
+
+    if(valid.length < 2){
+      resultPanel.className = 'result-panel placeholder';
+      resultPanel.textContent = 'Cargá precio y cantidad de al menos 2 productos para ver la comparación.';
       return;
     }
 
-    html5QrCode = new Html5Qrcode('reader', {
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.UPC_A
-      ],
-      verbose: false
-    });
-
-    var config = { fps: 10, qrbox: { width: 250, height: 140 } };
-
-    // Pedido de cámara mínimo: solo facingMode "environment" (trasera).
-    // Se probó pedir foco continuo, resolución alta y listar cámaras en
-    // paralelo, y cada uno de esos agregados rompió el acceso a la
-    // cámara en este dispositivo. Nos quedamos con lo mínimo que
-    // funciona de forma confiable.
-    html5QrCode.start(
-      { facingMode: 'environment' },
-      config,
-      function onScanSuccess(decodedText){
-        onBarcodeDetected(decodedText);
-      },
-      function onScanFailure(){ /* ignorar frames sin código */ }
-    ).catch(function(err){
-      showStatus(target, 'No pudimos acceder a la cámara (permiso denegado o sin cámara disponible). Podés escanear de nuevo o cargar todo a mano 👇', 'error');
-      closeScanModal();
-    });
-  }
-
-  function onBarcodeDetected(code){
-    var target = currentScanTarget;
-    stopScanner().then(function(){
-      scanModal.classList.remove('show');
-      if(target){
-        lookupProduct(code, target);
+    var computed = [];
+    var leftover = [];
+    valid.forEach(function(p){
+      var u = computeUnitPrice(p);
+      if(u){
+        computed.push({ product: p, unitPrice: u.unitPrice, label: u.label, category: unitCategory(p.unit) });
       }
     });
-  }
 
-  function stopScanner(){
-    if(html5QrCode){
-      return html5QrCode.stop().then(function(){
-        html5QrCode.clear();
-        html5QrCode = null;
-      }).catch(function(){
-        html5QrCode = null;
-      });
+    if(computed.length < 2){
+      resultPanel.className = 'result-panel placeholder';
+      resultPanel.textContent = 'Revisá los valores cargados: precio y cantidad tienen que ser mayores a cero.';
+      return;
     }
-    return Promise.resolve();
+
+    var groups = {};
+    computed.forEach(function(c){
+      if(!groups[c.category]) groups[c.category] = [];
+      groups[c.category].push(c);
+    });
+
+    var categoryKeys = Object.keys(groups);
+    var comparableKeys = categoryKeys.filter(function(k){ return groups[k].length >= 2; });
+
+    if(comparableKeys.length === 0){
+      resultPanel.className = 'result-panel show';
+      resultPanel.innerHTML = '<div class="result-warning">⚠️ No hay dos productos con el mismo tipo de unidad (peso / volumen / unidades) para comparar.</div>';
+      return;
+    }
+
+    categoryKeys.forEach(function(k){
+      if(groups[k].length < 2){
+        groups[k].forEach(function(c){ leftover.push(c.product); });
+      }
+    });
+
+    var html = '';
+    if(categoryKeys.length > 1){
+      html += '<div class="result-note">Hay unidades de distinto tipo (peso / volumen / unidades): comparamos por separado.</div>';
+    }
+
+    comparableKeys.forEach(function(catKey, groupIdx){
+      var group = groups[catKey].slice().sort(function(a, b){ return a.unitPrice - b.unitPrice; });
+      var winner = group[0];
+
+      html += '<div class="result-group">';
+      if(categoryKeys.length > 1){
+        html += '<div class="result-group-title">' + group[0].label + '</div>';
+      }
+      group.forEach(function(item, i){
+        var isWinner = item === winner;
+        var rankLabel = isWinner ? '🏆' : (i + 1) + '°';
+        var sub = item.label;
+        if(!isWinner){
+          var diffPct = ((item.unitPrice - winner.unitPrice) / winner.unitPrice) * 100;
+          sub += ' · +' + formatARS(diffPct) + '% más caro';
+        }
+        html += '<div class="result-row' + (isWinner ? ' winner' : '') + '">' +
+          '<div class="result-rank">' + rankLabel + '</div>' +
+          '<div class="result-info">' +
+            '<div class="result-name">' + escapeHtml(truncate(productLabel(item.product), 24)) + '</div>' +
+            '<div class="result-sub">' + sub + '</div>' +
+          '</div>' +
+          '<div class="result-price">$' + formatARS(item.unitPrice) + '</div>' +
+        '</div>';
+      });
+      html += '</div>';
+    });
+
+    if(leftover.length > 0){
+      var names = leftover.map(function(p){ return escapeHtml(productLabel(p)); }).join(', ');
+      html += '<div class="result-leftover">Sin comparables (unidad distinta): ' + names + '</div>';
+    }
+
+    resultPanel.className = 'result-panel show';
+    resultPanel.innerHTML = html;
   }
 
-  function closeScanModal(){
-    stopScanner().then(function(){
-      scanModal.classList.remove('show');
-      currentScanTarget = null;
-    });
-  }
-
-  $$('[data-action="scan"]').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var target = btn.getAttribute('data-target');
-      openScanModal(target);
-    });
-  });
-
-  $('#scanModalClose').addEventListener('click', closeScanModal);
-  scanModal.addEventListener('click', function(e){
-    if(e.target === scanModal) closeScanModal();
-  });
+  // --- Arranque: 2 productos por defecto ---
+  addProduct();
+  addProduct();
 
 })();
 </script>
 
 <!--
   ================================================================
-  DEPLOY GRATUITO CON HTTPS (necesario para getUserMedia / cámara)
+  DEPLOY GRATUITO (opcional)
   ================================================================
+  Esta versión ya no usa cámara ni llamadas a APIs externas, así
+  que no necesita HTTPS ni contexto seguro: podés abrir este
+  archivo comparador.html directamente con doble clic (file://)
+  o servirlo desde cualquier hosting estático.
+
+  Si igual querés tener una URL pública para abrir desde el
+  celular sin transferir el archivo:
 
   OPCIÓN 1 — GitHub Pages
   1. Subí este archivo comparador.html a un repositorio de GitHub.
@@ -797,21 +566,12 @@
   3. En "Source" elegí la rama (ej. main) y la carpeta raíz (/).
   4. Guardá. En un par de minutos vas a tener una URL del tipo:
      https://tu-usuario.github.io/tu-repo/comparador.html
-  5. Abrí esa URL desde el navegador del celular (Chrome/Safari) y
-     dale permiso a la cámara cuando lo pida.
 
   OPCIÓN 2 — Netlify Drop (más rápido, sin cuenta obligatoria)
   1. Entrá a https://app.netlify.com/drop desde la compu.
   2. Arrastrá este archivo comparador.html (o una carpeta que lo
      contenga) a la zona de drop.
-  3. Netlify te da al toque una URL HTTPS pública (podés renombrar
-     el subdominio si creás una cuenta gratuita).
-  4. Abrí esa URL en el celular.
-
-  Nota: getUserMedia (acceso a la cámara) solo funciona en
-  "contextos seguros": HTTPS o localhost. Abrir el archivo con
-  file:// o servirlo por HTTP plano va a bloquear la cámara, pero
-  la app sigue funcionando igual en modo 100% manual.
+  3. Netlify te da al toque una URL pública.
 -->
 </body>
 </html>
